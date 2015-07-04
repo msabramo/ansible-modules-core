@@ -347,6 +347,15 @@ class UbuntuSourcesList(SourcesList):
         rc, out, err = self.module.run_command('apt-key export %s' % key_fingerprint, check_rc=True)
         return len(err) == 0
 
+    def has_source(self, line):
+        if line.startswith('ppa:'):
+            source, _, _ = self._expand_ppa(line)
+        else:
+            source = self._parse(line, raise_if_invalid_or_disabled=True)[2]
+
+        return any([existing_source == source
+                    for _, _, _, existing_source, _ in self])
+
     def add_source(self, line, comment='', file=None):
         if line.startswith('ppa:'):
             source, ppa_owner, ppa_name = self._expand_ppa(line)
@@ -419,7 +428,8 @@ def main():
 
     try:
         if state == 'present':
-            sourceslist.add_source(repo)
+            if not sourceslist.has_source(repo):
+                sourceslist.add_source(repo)
         elif state == 'absent':
             sourceslist.remove_source(repo)
     except InvalidSource, err:
